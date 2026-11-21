@@ -53,8 +53,8 @@
 <body class="min-h-screen flex flex-col overflow-x-hidden">
 
   <!-- ================= 로그인 & 회원가입 오버레이 화면 ================= -->
-  <div id="login-screen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 relative overflow-hidden">
+  <div id="login-screen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl space-y-4 sm:space-y-5 relative overflow-hidden my-auto">
       <div class="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
       <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -146,50 +146,52 @@
   </div>
 
   <!-- ================= 상단 헤더 / 재화 및 컨트롤 ================= -->
-  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-lg">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-3 sm:px-4 py-2.5 sm:py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
       <!-- 타이틀 & 접속 유저 표시 -->
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-2xl shadow-md">
-          🧠
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-game text-xl sm:text-2xl bg-gradient-to-r from-sky-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              2D 브레인롯 컬렉터
-            </h1>
-            <span id="user-badge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 border border-slate-700 text-slate-300">
-              👤 게스트
-            </span>
+      <div class="flex items-center justify-between sm:justify-start gap-2.5">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-xl sm:text-2xl shadow-md">
+            🧠
           </div>
-          <p class="text-xs text-slate-400">평화로운 브레인롯 수집 & 방치형 타이쿤</p>
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <h1 class="font-game text-lg sm:text-2xl bg-gradient-to-r from-sky-400 via-purple-400 to-pink-400 bg-clip-text text-transparent truncate">
+                2D 브레인롯 컬렉터
+              </h1>
+              <span id="user-badge" class="hidden px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-slate-800 border border-slate-700 text-slate-300 shrink-0">
+                👤 게스트
+              </span>
+            </div>
+            <p class="text-[11px] sm:text-xs text-slate-400 truncate">평화로운 브레인롯 수집 & 방치형 타이쿤</p>
+          </div>
         </div>
       </div>
 
-      <!-- 재화 & 수익 현황 -->
-      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-        <div class="bg-slate-950/90 border border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-inner">
-          <span class="text-lg">💰</span>
-          <div>
+      <!-- 재화 & 수익 현황 (모바일 2열 그리드 + 하단 버튼 정렬) -->
+      <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+        <div class="bg-slate-950/90 border border-slate-800 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-inner">
+          <span class="text-base sm:text-lg">💰</span>
+          <div class="min-w-0">
             <div class="text-[10px] text-slate-400 font-semibold uppercase">보유 골드</div>
-            <div id="money-display" class="text-base sm:text-lg font-extrabold text-emerald-400">100 G</div>
+            <div id="money-display" class="text-sm sm:text-lg font-extrabold text-emerald-400 truncate">100 G</div>
           </div>
         </div>
 
-        <div class="bg-slate-950/90 border border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-inner">
-          <span class="text-lg">⚡</span>
-          <div>
+        <div class="bg-slate-950/90 border border-slate-800 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl flex items-center gap-2 shadow-inner">
+          <span class="text-base sm:text-lg">⚡</span>
+          <div class="min-w-0">
             <div class="text-[10px] text-slate-400 font-semibold uppercase">초당 수익</div>
-            <div id="income-display" class="text-base sm:text-lg font-extrabold text-amber-400">0 G/초</div>
+            <div id="income-display" class="text-sm sm:text-lg font-extrabold text-amber-400 truncate">0 G/초</div>
           </div>
         </div>
 
-        <button onclick="openDexModal()" class="px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-1.5">
+        <button onclick="openDexModal()" class="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-1.5">
           <span>📖</span>
           <span>도감 (<span id="dex-count">0</span>/24)</span>
         </button>
 
-        <button onclick="openRatesModal()" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 transition">
+        <button onclick="openRatesModal()" class="px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 transition flex items-center justify-center">
           📊 확률표
         </button>
       </div>
@@ -197,12 +199,10 @@
   </header>
 
   <!-- ================= 메인 게임 영역 (좌측 개발자 패널 + 우측 게임 화면) ================= -->
-  <div class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
+  <div class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-4 py-4 sm:py-5 flex flex-col lg:flex-row gap-4 sm:gap-5">
 
-    <!-- 왼쪽: 운영자 전용 개발자 패널 (매니저 계정 로그인 시에만 표시) -->
-    <aside id="dev-panel" class="hidden w-full lg:w-80 shrink-0 bg-slate-900/95 border-2 border-rose-500/60 rounded-2xl p-4 shadow-2xl space-y-5 self-start">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
+    <!-- 왼쪽: 운영자 전용 개발자 패널 (매니저 계정 로그인 시 본인 화면에만 표시) -->
+    <aside id="dev-panel" class="hidden w-full lg:w-80 shrink-0 bg-slate-900/95 border-2 border-rose-500/60 rounded-2xl p-3.5 sm:p-4 shadow-2xl space-y-4 sm:space-y-5 self-start">
           <span class="text-xl">🛠️</span>
           <div>
             <h2 class="text-sm font-extrabold text-rose-400">운영자 개발자 패널</h2>
@@ -252,39 +252,39 @@
           </div>
         </div>
 
-        <!-- 컨베이어 벨트 트랙 -->
-        <div id="conveyor-belt" class="conveyor-track relative w-full h-44 rounded-xl border-2 border-slate-700/80 overflow-hidden shadow-inner">
-          <div class="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-slate-950/90 to-transparent z-10 pointer-events-none flex items-center justify-center text-slate-500 text-xs font-bold">
-            출구
-          </div>
-          <div class="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-slate-950/90 to-transparent z-10 pointer-events-none flex items-center justify-center text-slate-500 text-xs font-bold">
+        <!-- 컨베이어 벨트 트랙 (왼쪽 입구 -> 오른쪽 출구 방향) -->
+        <div id="conveyor-belt" class="conveyor-track relative w-full h-40 sm:h-44 rounded-xl border-2 border-slate-700/80 overflow-hidden shadow-inner">
+          <div class="absolute inset-y-0 left-0 w-9 sm:w-10 bg-gradient-to-r from-slate-950/95 to-transparent z-30 pointer-events-none flex items-center justify-center text-sky-400 text-[11px] sm:text-xs font-extrabold">
             입구
+          </div>
+          <div class="absolute inset-y-0 right-0 w-9 sm:w-10 bg-gradient-to-l from-slate-950/95 to-transparent z-30 pointer-events-none flex items-center justify-center text-rose-400 text-[11px] sm:text-xs font-extrabold">
+            출구
           </div>
         </div>
       </section>
 
       <!-- 2. 내 브레인롯 기지 구역 -->
-      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex-1">
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-xl flex-1">
+        <div class="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3.5 sm:mb-4">
           <div>
-            <h2 class="text-base sm:text-lg font-extrabold text-emerald-300 flex items-center gap-2">
+            <h2 class="text-sm sm:text-lg font-extrabold text-emerald-300 flex items-center gap-2 flex-wrap">
               <span>🏰 나의 브레인롯 기지</span>
-              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              <span class="text-[11px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
                 슬롯 <span id="slot-used">0</span> / <span id="slot-max">4</span>
               </span>
             </h2>
-            <p class="text-xs text-slate-400">배치된 브레인롯들이 매초 자동으로 골드를 벌어옵니다.</p>
+            <p class="text-[11px] sm:text-xs text-slate-400">배치된 브레인롯들이 매초 자동으로 골드를 벌어옵니다.</p>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button id="btn-expand-slot" onclick="expandSlot()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow transition">
+          <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button id="btn-expand-slot" onclick="expandSlot()" class="w-full sm:w-auto px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow transition">
               ➕ 슬롯 확장 (<span id="slot-cost">500</span> G)
             </button>
           </div>
         </div>
 
         <!-- 기지 슬롯 그리드 -->
-        <div id="base-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+        <div id="base-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-4">
           <!-- JS로 동적 렌더링 -->
         </div>
       </section>
@@ -567,17 +567,24 @@
       document.getElementById('login-screen').classList.add('hidden');
 
       const badge = document.getElementById('user-badge');
+      const devPanel = document.getElementById('dev-panel');
       badge.classList.remove('hidden');
-      if (state.isAdmin) {
+
+      // 오직 현재 클라이언트에서 '매니저 / qwer1234'로 로그인한 본인에게만 운영자 패널 활성화
+      if (state.isAdmin === true && nickname === '매니저' && password === 'qwer1234') {
         badge.innerHTML = `👑 운영자 (${nickname})`;
-        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500/20 border border-rose-500 text-rose-300';
-        document.getElementById('dev-panel').classList.remove('hidden');
+        badge.className = 'px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-extrabold bg-rose-500/20 border border-rose-500 text-rose-300 shrink-0';
+        devPanel.classList.remove('hidden');
         populateDevSummonSelect();
-      } else if (registeredAccounts.has(nickname)) {
-        badge.innerHTML = `✅ ${nickname}`;
-        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-950/80 border border-indigo-600 text-indigo-300';
       } else {
-        badge.innerHTML = `👤 ${nickname} (게스트)`;
+        state.isAdmin = false;
+        devPanel.classList.add('hidden');
+        if (registeredAccounts.has(nickname)) {
+          badge.innerHTML = `✅ ${nickname}`;
+          badge.className = 'px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-indigo-950/80 border border-indigo-600 text-indigo-300 shrink-0';
+        } else {
+          badge.innerHTML = `👤 ${nickname} (게스트)`;
+        }
       }
 
       initAudio();
@@ -681,16 +688,16 @@
       const uid = 'unit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 
       const card = document.createElement('div');
-      card.className = `belt-unit absolute top-3 w-32 h-36 rounded-xl border-2 ${tierInfo.border} ${tierInfo.bg} ${tierInfo.glow} p-2 flex flex-col items-center justify-between cursor-pointer hover:scale-105 transition-transform shadow-lg z-20`;
+      card.className = `belt-unit absolute top-2.5 sm:top-3 left-0 w-28 sm:w-32 h-34 sm:h-36 rounded-xl border-2 ${tierInfo.border} ${tierInfo.bg} ${tierInfo.glow} p-1.5 sm:p-2 flex flex-col items-center justify-between cursor-pointer hover:scale-105 transition-transform shadow-lg z-20`;
       card.innerHTML = `
         <div class="w-full flex items-center justify-between">
-          <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${tierInfo.badge}">${tierInfo.name}</span>
-          <span class="text-[10px] font-bold text-amber-300">+${formatNumber(char.income)}/s</span>
+          <span class="px-1.5 py-0.5 rounded text-[9px] sm:text-[10px] font-extrabold ${tierInfo.badge}">${tierInfo.name}</span>
+          <span class="text-[9px] sm:text-[10px] font-bold text-amber-300">+${formatNumber(char.income)}/s</span>
         </div>
         ${isGlobalSummon ? `<span class="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[9px] font-extrabold animate-pulse">⚡ 운영자 소환</span>` : ''}
-        <div class="text-3xl my-0.5 drop-shadow">${char.emoji}</div>
-        <div class="text-[11px] font-extrabold text-white text-center leading-tight line-clamp-1">${char.name}</div>
-        <div class="w-full py-1 rounded-lg bg-emerald-600/90 text-white text-[11px] font-extrabold text-center shadow">
+        <div class="text-2xl sm:text-3xl my-0.5 drop-shadow">${char.emoji}</div>
+        <div class="text-[10px] sm:text-[11px] font-extrabold text-white text-center leading-tight line-clamp-1">${char.name}</div>
+        <div class="w-full py-1 rounded-lg bg-emerald-600/90 text-white text-[10px] sm:text-[11px] font-extrabold text-center shadow">
           ${formatNumber(char.cost)} G
         </div>
       `;
@@ -698,7 +705,8 @@
       card.addEventListener('click', () => buyBeltUnit(uid));
       beltEl.appendChild(card);
 
-      const startX = beltEl.clientWidth || 700;
+      // 왼쪽 '입구' 바깥(-120px)에서 시작하여 오른쪽 '출구' 방향으로 이동
+      const startX = -120;
       card.style.transform = `translateX(${startX}px)`;
 
       state.beltUnits.push({
@@ -941,11 +949,14 @@
       lastTime = now;
 
       if (state.loggedIn) {
-        // 1) 컨베이어 유닛 이동
+        const beltEl = document.getElementById('conveyor-belt');
+        const maxBeltX = (beltEl ? beltEl.clientWidth : 700) + 20;
+
+        // 1) 컨베이어 유닛 이동 (왼쪽 입구 -> 오른쪽 출구 방향)
         for (let i = state.beltUnits.length - 1; i >= 0; i--) {
           const u = state.beltUnits[i];
-          u.x -= u.speed * dt;
-          if (u.x < -140) {
+          u.x += u.speed * dt;
+          if (u.x > maxBeltX) {
             u.el.remove();
             state.beltUnits.splice(i, 1);
           } else {
