@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2D 브레인롯 컬렉터</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', 'Malgun Gothic', sans-serif;
+      background-color: #090d16;
+      color: #f8fafc;
+      user-select: none;
+    }
+    .font-game {
+      font-family: 'Black Han Sans', 'Malgun Gothic', sans-serif;
+      letter-spacing: 0.03em;
+    }
+    /* 컨베이어 벨트 줄무늬 애니메이션 */
+    @keyframes beltMove {
+      0% { background-position: 0 0; }
+      100% { background-position: 48px 0; }
+    }
+    .conveyor-track {
+      background-image: repeating-linear-gradient(
+        90deg,
+        #1e293b 0px,
+        #1e293b 24px,
+        #0f172a 24px,
+        #0f172a 48px
+      );
+      animation: beltMove 1s linear infinite;
+    }
+    /* 고등급 아우라 애니메이션 */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 12px rgba(244, 63, 94, 0.6); }
+      50% { box-shadow: 0 0 24px rgba(244, 63, 94, 0.95); }
+    }
+    @keyframes transcendGlow {
+      0%, 100% { box-shadow: 0 0 15px rgba(45, 212, 191, 0.7), inset 0 0 10px rgba(45, 212, 191, 0.3); }
+      50% { box-shadow: 0 0 28px rgba(168, 85, 247, 0.95), inset 0 0 14px rgba(168, 85, 247, 0.4); }
+    }
+    .glow-ultimate { animation: pulseGlow 1.8s infinite; }
+    .glow-transcend { animation: transcendGlow 1.5s infinite; }
+
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- ================= 로그인 & 회원가입 오버레이 화면 ================= -->
+  <div id="login-screen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/80 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 relative overflow-hidden">
+      <div class="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="text-center space-y-2 relative">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-4xl shadow-lg mb-3">
+          🧠
+        </div>
+        <h2 class="font-game text-2xl sm:text-3xl bg-gradient-to-r from-sky-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          2D 브레인롯 컬렉터
+        </h2>
+        <p id="auth-subtitle" class="text-xs text-slate-400">계정으로 로그인하고 실시간 서버에 접속하세요!</p>
+      </div>
+
+      <!-- 로그인 / 회원가입 전환 탭 -->
+      <div class="grid grid-cols-2 bg-slate-950 p-1 rounded-xl border border-slate-800 relative">
+        <button type="button" id="tab-login" onclick="switchAuthTab('login')" class="py-2 rounded-lg text-xs font-extrabold bg-indigo-600 text-white shadow transition">
+          🔑 로그인
+        </button>
+        <button type="button" id="tab-signup" onclick="switchAuthTab('signup')" class="py-2 rounded-lg text-xs font-extrabold text-slate-400 hover:text-white transition">
+          📝 회원가입
+        </button>
+      </div>
+
+      <!-- 로그인 폼 -->
+      <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4 relative">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">닉네임</label>
+          <input id="login-nickname" type="text" required maxlength="16" placeholder="닉네임을 입력하세요"
+            class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-white placeholder-slate-600 transition" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">비밀번호 <span class="text-slate-500 font-normal">(비회원 즉시 접속 시 비워두기 가능)</span></label>
+          <input id="login-password" type="password" placeholder="비밀번호를 입력하세요"
+            class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 focus:border-indigo-500 focus:outline-none text-sm text-white placeholder-slate-600 transition" />
+        </div>
+
+        <p id="login-error" class="hidden text-xs font-bold text-rose-400 text-center"></p>
+
+        <button type="submit" id="btn-login-submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 active:scale-95 text-white font-bold text-sm shadow-lg shadow-indigo-950/60 transition">
+          🚀 서버 접속 및 플레이
+        </button>
+      </form>
+
+      <!-- 회원가입 폼 -->
+      <form id="signup-form" onsubmit="handleSignup(event)" class="hidden space-y-3.5 relative">
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">새 닉네임</label>
+          <input id="signup-nickname" type="text" required maxlength="16" placeholder="사용할 닉네임 (2~16자)"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-emerald-500 focus:outline-none text-sm text-white placeholder-slate-600 transition" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">비밀번호</label>
+          <input id="signup-password" type="password" required minlength="4" maxlength="24" placeholder="비밀번호 (4자 이상)"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-emerald-500 focus:outline-none text-sm text-white placeholder-slate-600 transition" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-300 mb-1.5">비밀번호 확인</label>
+          <input id="signup-password-confirm" type="password" required minlength="4" maxlength="24" placeholder="비밀번호를 다시 입력하세요"
+            class="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-slate-700 focus:border-emerald-500 focus:outline-none text-sm text-white placeholder-slate-600 transition" />
+        </div>
+
+        <p id="signup-error" class="hidden text-xs font-bold text-rose-400 text-center"></p>
+
+        <button type="submit" id="btn-signup-submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-bold text-sm shadow-lg shadow-emerald-950/60 transition">
+          ✨ 회원가입 완료하기
+        </button>
+      </form>
+
+      <div class="text-center text-[11px] text-slate-500 pt-2 border-t border-slate-800/80">
+        실시간 글로벌 이벤트 & 클라우드 계정 시스템 연동됨
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 전 서버 전체 공지 배너 ================= -->
+  <div id="global-announce-banner" class="hidden bg-gradient-to-r from-rose-600 via-amber-500 to-rose-600 text-white px-4 py-2.5 shadow-lg z-40">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-xs sm:text-sm font-extrabold tracking-wide">
+        <span class="px-2 py-0.5 rounded bg-black/30 text-amber-200 text-[11px]">📢 운영자 전체 공지</span>
+        <span id="global-announce-text">공지 내용</span>
+      </div>
+      <button onclick="document.getElementById('global-announce-banner').classList.add('hidden')" class="text-white/80 hover:text-white text-xs font-bold px-2 py-0.5 rounded bg-black/20">
+        닫기
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= 상단 헤더 / 재화 및 컨트롤 ================= -->
+  <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-30 px-4 py-3 shadow-lg">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- 타이틀 & 접속 유저 표시 -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-2xl shadow-md">
+          🧠
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-game text-xl sm:text-2xl bg-gradient-to-r from-sky-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              2D 브레인롯 컬렉터
+            </h1>
+            <span id="user-badge" class="hidden px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 border border-slate-700 text-slate-300">
+              👤 게스트
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">평화로운 브레인롯 수집 & 방치형 타이쿤</p>
+        </div>
+      </div>
+
+      <!-- 재화 & 수익 현황 -->
+      <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div class="bg-slate-950/90 border border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-inner">
+          <span class="text-lg">💰</span>
+          <div>
+            <div class="text-[10px] text-slate-400 font-semibold uppercase">보유 골드</div>
+            <div id="money-display" class="text-base sm:text-lg font-extrabold text-emerald-400">100 G</div>
+          </div>
+        </div>
+
+        <div class="bg-slate-950/90 border border-slate-800 px-3.5 py-2 rounded-xl flex items-center gap-2 shadow-inner">
+          <span class="text-lg">⚡</span>
+          <div>
+            <div class="text-[10px] text-slate-400 font-semibold uppercase">초당 수익</div>
+            <div id="income-display" class="text-base sm:text-lg font-extrabold text-amber-400">0 G/초</div>
+          </div>
+        </div>
+
+        <button onclick="openDexModal()" class="px-3.5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold text-xs sm:text-sm shadow-md transition flex items-center gap-1.5">
+          <span>📖</span>
+          <span>도감 (<span id="dex-count">0</span>/24)</span>
+        </button>
+
+        <button onclick="openRatesModal()" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 font-bold text-xs sm:text-sm border border-slate-700 transition">
+          📊 확률표
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 메인 게임 영역 (좌측 개발자 패널 + 우측 게임 화면) ================= -->
+  <div class="flex-1 max-w-7xl w-full mx-auto px-4 py-5 flex flex-col lg:flex-row gap-5">
+
+    <!-- 왼쪽: 운영자 전용 개발자 패널 (매니저 계정 로그인 시에만 표시) -->
+    <aside id="dev-panel" class="hidden w-full lg:w-80 shrink-0 bg-slate-900/95 border-2 border-rose-500/60 rounded-2xl p-4 shadow-2xl space-y-5 self-start">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🛠️</span>
+          <div>
+            <h2 class="text-sm font-extrabold text-rose-400">운영자 개발자 패널</h2>
+            <p class="text-[11px] text-slate-400">전 세계 모든 접속자 서버에 즉시 반영</p>
+          </div>
+        </div>
+        <span class="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold">
+          ADMIN
+        </span>
+      </div>
+
+      <!-- 1. 전 서버 전체 공지 발송 -->
+      <div class="space-y-2 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+        <label class="block text-xs font-bold text-amber-400">📢 전 서버 상단 공지 띄우기</label>
+        <p class="text-[11px] text-slate-400">입력한 텍스트가 현재 플레이 중인 모든 유저의 화면 상단에 즉시 표시됩니다.</p>
+        <input id="dev-announce-input" type="text" maxlength="80" placeholder="예: 잠시 후 초월 등급 소환 이벤트!"
+          class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 focus:border-amber-400 focus:outline-none text-xs text-white" />
+        <button onclick="sendGlobalAnnounce()" class="w-full py-2 rounded-lg bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs shadow transition">
+          전 서버 공지 전송하기
+        </button>
+      </div>
+
+      <!-- 2. 전 서버 캐릭터 강제 소환 패널 -->
+      <div class="space-y-2.5 bg-slate-950/70 p-3.5 rounded-xl border border-slate-800">
+        <label class="block text-xs font-bold text-teal-400">⚡ 전 서버 캐릭터 강제 소환</label>
+        <p class="text-[11px] text-slate-400">선택한 브레인롯이 전 세계 모든 플레이어의 컨베이어 벨트에 즉시 등장합니다!</p>
+        <select id="dev-summon-select" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 focus:border-teal-400 focus:outline-none text-xs text-white font-semibold">
+          <!-- JS로 24종 캐릭터 옵션 자동 렌더링 -->
+        </select>
+        <button onclick="sendGlobalSummon()" class="w-full py-2.5 rounded-lg bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 active:scale-95 text-white font-bold text-xs shadow-lg transition">
+          🌟 전 서버에 캐릭터 소환하기
+        </button>
+      </div>
+    </aside>
+
+    <!-- 오른쪽: 메인 컨베이어 벨트 & 내 기지 -->
+    <main class="flex-1 flex flex-col gap-6 min-w-0">
+
+      <!-- 1. 컨베이어 벨트 구역 -->
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-sky-300 flex items-center gap-2">
+              <span>🏭 브레인롯 생산 컨베이어</span>
+            </h2>
+            <p class="text-xs text-slate-400">벨트 위를 지나가는 캐릭터를 클릭해 영입하세요! (사라지기 전에 빠르게 클릭!)</p>
+          </div>
+        </div>
+
+        <!-- 컨베이어 벨트 트랙 -->
+        <div id="conveyor-belt" class="conveyor-track relative w-full h-44 rounded-xl border-2 border-slate-700/80 overflow-hidden shadow-inner">
+          <div class="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-slate-950/90 to-transparent z-10 pointer-events-none flex items-center justify-center text-slate-500 text-xs font-bold">
+            출구
+          </div>
+          <div class="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-slate-950/90 to-transparent z-10 pointer-events-none flex items-center justify-center text-slate-500 text-xs font-bold">
+            입구
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. 내 브레인롯 기지 구역 -->
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl flex-1">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 class="text-base sm:text-lg font-extrabold text-emerald-300 flex items-center gap-2">
+              <span>🏰 나의 브레인롯 기지</span>
+              <span class="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                슬롯 <span id="slot-used">0</span> / <span id="slot-max">4</span>
+              </span>
+            </h2>
+            <p class="text-xs text-slate-400">배치된 브레인롯들이 매초 자동으로 골드를 벌어옵니다.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-expand-slot" onclick="expandSlot()" class="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow transition">
+              ➕ 슬롯 확장 (<span id="slot-cost">500</span> G)
+            </button>
+          </div>
+        </div>
+
+        <!-- 기지 슬롯 그리드 -->
+        <div id="base-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          <!-- JS로 동적 렌더링 -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 알림 토스트 컨테이너 -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ================= 도감 모달 ================= -->
+  <div id="dex-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl">
+      <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg sm:text-xl font-extrabold text-purple-300">📖 브레인롯 컬렉션 도감</h3>
+          <p class="text-xs text-slate-400">총 24종의 모든 브레인롯을 수집해보세요!</p>
+        </div>
+        <button onclick="closeDexModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+      <div id="dex-grid" class="p-4 sm:p-5 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        <!-- JS로 렌더링 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 확률표 모달 ================= -->
+  <div id="rates-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+        <h3 class="text-lg font-extrabold text-sky-300">📊 등급별 등장 확률표</h3>
+        <button onclick="closeRatesModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+      <div class="space-y-2.5 text-sm">
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-slate-800/80 border border-slate-700">
+          <span class="font-bold text-slate-300">⚪ 커먼 (Common)</span>
+          <span class="font-extrabold text-slate-200">50.000%</span>
+        </div>
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-sky-950/60 border border-sky-800/70">
+          <span class="font-bold text-sky-400">🔵 레어 (Rare)</span>
+          <span class="font-extrabold text-sky-300">30.000%</span>
+        </div>
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-purple-950/60 border border-purple-800/70">
+          <span class="font-bold text-purple-400">🟣 에픽 (Epic)</span>
+          <span class="font-extrabold text-purple-300">15.000%</span>
+        </div>
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-amber-950/60 border border-amber-700/70">
+          <span class="font-bold text-amber-400">🟡 전설 (Legendary)</span>
+          <span class="font-extrabold text-amber-300">4.900%</span>
+        </div>
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-rose-950/60 border border-rose-700/70">
+          <span class="font-bold text-rose-400">🔴 얼티밋 (Ultimate)</span>
+          <span class="font-extrabold text-rose-300">0.050%</span>
+        </div>
+        <div class="flex justify-between items-center p-2.5 rounded-xl bg-teal-950/70 border border-teal-500/70">
+          <span class="font-bold text-teal-300">🌈 초월 (Transcendent)</span>
+          <span class="font-extrabold text-teal-200">0.025%</span>
+        </div>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-4 leading-relaxed">
+        * 설정된 고유 확률 비율(총합 99.975% 기준 정규화)에 따라 무작위로 브레인롯이 컨베이어에 등장합니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- ================= 게임 로직 스크립트 ================= -->
+  <script>
+    // ==========================================
+    // 1. 등급 및 24종 캐릭터 데이터 정의
+    // ==========================================
+    const TIERS = {
+      common:    { name: '커먼', weight: 50,    color: '#94a3b8', border: 'border-slate-400',   bg: 'bg-slate-800/90',   badge: 'bg-slate-500 text-slate-950', glow: '' },
+      rare:      { name: '레어', weight: 30,    color: '#38bdf8', border: 'border-sky-400',     bg: 'bg-sky-950/80',     badge: 'bg-sky-400 text-slate-950',   glow: '' },
+      epic:      { name: '에픽', weight: 15,    color: '#c084fc', border: 'border-purple-400',  bg: 'bg-purple-950/80',  badge: 'bg-purple-400 text-slate-950',glow: '' },
+      legend:    { name: '전설', weight: 4.9,   color: '#facc15', border: 'border-amber-400',   bg: 'bg-amber-950/80',   badge: 'bg-amber-400 text-slate-950', glow: '' },
+      ultimate:  { name: '얼티밋', weight: 0.05, color: '#f43f5e', border: 'border-rose-500',    bg: 'bg-rose-950/90',    badge: 'bg-rose-500 text-white',      glow: 'glow-ultimate' },
+      transcend: { name: '초월', weight: 0.025, color: '#2dd4bf', border: 'border-teal-300',    bg: 'bg-teal-950/90',    badge: 'bg-gradient-to-r from-teal-300 to-purple-400 text-slate-950', glow: 'glow-transcend' }
+    };
+
+    const CHARACTERS = [
+      // 커먼 (50%)
+      { id: 'c1', tier: 'common', name: '장재윤', person: '장재윤', emoji: '🧑', cost: 25, income: 3, desc: '가장 흔하게 보이는 평범한 장재윤.' },
+      { id: 'c2', tier: 'common', name: '황지우', person: '황지우', emoji: '👦', cost: 25, income: 3, desc: '어디서나 마주칠 수 있는 기본 황지우.' },
+      { id: 'c3', tier: 'common', name: '조윤성', person: '조윤성', emoji: '🧒', cost: 25, income: 3, desc: '성실하게 걸어 나오는 기본 조윤성.' },
+      { id: 'c4', tier: 'common', name: '장시온', person: '장시온', emoji: '👨', cost: 25, income: 3, desc: '컨베이어의 단골 손님 기본 장시온.' },
+
+      // 레어 (30%)
+      { id: 'r1', tier: 'rare', name: '슈퍼 장재윤', person: '장재윤', emoji: '🦸', cost: 150, income: 18, desc: '망토를 두르고 각성한 슈퍼 장재윤!' },
+      { id: 'r2', tier: 'rare', name: '해커 장시온', person: '장시온', emoji: '💻', cost: 150, income: 18, desc: '보안망을 뚫고 등장한 천재 해커 장시온.' },
+      { id: 'r3', tier: 'rare', name: '러시아 황지우', person: '황지우', emoji: '❄️', cost: 150, income: 18, desc: '혹한의 추위를 이겨낸 러시아 황지우.' },
+      { id: 'r4', tier: 'rare', name: '복서 조윤성', person: '조윤성', emoji: '🥊', cost: 150, income: 18, desc: '강력한 펀치를 날리는 복서 조윤성.' },
+
+      // 에픽 (15%)
+      { id: 'e1', tier: 'epic', name: '김치 장재윤', person: '장재윤', emoji: '🥬', cost: 900, income: 110, desc: '한국인의 매운맛을 품은 김치 장재윤.' },
+      { id: 'e2', tier: 'epic', name: '개발자 장시온', person: '장시온', emoji: '⌨️', cost: 900, income: 110, desc: '밤샘 코딩으로 버그를 잡는 개발자 장시온.' },
+      { id: 'e3', tier: 'epic', name: '고양이 황지우', person: '황지우', emoji: '🐱', cost: 900, income: 110, desc: '치명적인 귀여움을 장착한 고양이 황지우.' },
+      { id: 'e4', tier: 'epic', name: '땔타룬 조윤성', person: '조윤성', emoji: '🔮', cost: 900, income: 110, desc: '신비로운 이세계의 힘을 다루는 땔타룬 조윤성.' },
+
+      // 전설 (4.9%)
+      { id: 'l1', tier: 'legend', name: '장재스 장재윤', person: '장재윤', emoji: '🎷', cost: 6500, income: 850, desc: '전설적인 선율을 연주하는 장재스 장재윤.' },
+      { id: 'l2', tier: 'legend', name: '모르겔라로 장시온', person: '장시온', emoji: '🧙‍♂️', cost: 6500, income: 850, desc: '고대의 주문을 외우는 모르겔라로 장시온.' },
+      { id: 'l3', tier: 'legend', name: '병장 황지우', person: '황지우', emoji: '🎖️', cost: 6500, income: 850, desc: '전역을 앞둔 무적의 포스 병장 황지우.' },
+      { id: 'l4', tier: 'legend', name: '언밸런스 조윤성', person: '조윤성', emoji: '⚖️', cost: 6500, income: 850, desc: '예측 불가능한 파괴력을 지닌 언밸런스 조윤성.' },
+
+      // 얼티밋 (0.05%)
+      { id: 'u1', tier: 'ultimate', name: '부방장 장재윤', person: '장재윤', emoji: '🛡️', cost: 75000, income: 12000, desc: '방의 질서를 수호하는 절대 권력 부방장 장재윤!' },
+      { id: 'u2', tier: 'ultimate', name: '방장 장시온', person: '장시온', emoji: '👑', cost: 75000, income: 12000, desc: '모든 권한을 쥔 최상위 지배자 방장 장시온!' },
+      { id: 'u3', tier: 'ultimate', name: '최전방 황지우', person: '황지우', emoji: '🚀', cost: 75000, income: 12000, desc: '가장 치열한 전선을 지키는 최전방 황지우!' },
+      { id: 'u4', tier: 'ultimate', name: '과학 조윤성', person: '조윤성', emoji: '⚛️', cost: 75000, income: 12000, desc: '우주의 법칙을 해명한 천재 과학 조윤성!' },
+
+      // 초월 (0.025%)
+      { id: 't1', tier: 'transcend', name: '부방장의 몰락 장재윤', person: '장재윤', emoji: '🌑', cost: 500000, income: 100000, desc: '권력의 끝에서 초월적 존재로 거듭난 부방장의 몰락 장재윤.' },
+      { id: 't2', tier: 'transcend', name: '카드게임의 왕 장시온', person: '장시온', emoji: '🃏', cost: 500000, income: 100000, desc: '운명마저 패로 쥐고 흔드는 전설의 카드게임의 왕 장시온.' },
+      { id: 't3', tier: 'transcend', name: '나라의 지킴이 황지우', person: '황지우', emoji: '🐉', cost: 500000, income: 100000, desc: '온 세상을 수호하는 위대한 영웅 나라의 지킴이 황지우.' },
+      { id: 't4', tier: 'transcend', name: '개발자 조윤성', person: '조윤성', emoji: '🌌', cost: 500000, income: 100000, desc: '이 세계의 코드를 창조한 신적 존재 개발자 조윤성.' }
+    ];
+
+    // ==========================================
+    // 2. 게임 상태 (State)
+    // ==========================================
+    let state = {
+      nickname: '',
+      isAdmin: false,
+      loggedIn: false,
+      money: 100,
+      maxSlots: 4,
+      slots: [], // { uid, charId }
+      unlockedIds: new Set(),
+      beltUnits: [] // { uid, char, x, speed, el, isGlobalSummon }
+    };
+
+    const MAX_SLOTS_LIMIT = 12;
+
+    // ==========================================
+    // 3. 로그인 & 회원가입 처리
+    // ==========================================
+    const registeredAccounts = new Map();
+
+    window.syncAccountsCache = function(accountsList) {
+      registeredAccounts.clear();
+      accountsList.forEach(acc => {
+        if (acc && acc.nickname) {
+          registeredAccounts.set(acc.nickname, acc.password || '');
+        }
+      });
+    };
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const signupForm = document.getElementById('signup-form');
+      const tabLogin = document.getElementById('tab-login');
+      const tabSignup = document.getElementById('tab-signup');
+      const subtitle = document.getElementById('auth-subtitle');
+
+      document.getElementById('login-error').classList.add('hidden');
+      document.getElementById('signup-error').classList.add('hidden');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+        tabLogin.className = 'py-2 rounded-lg text-xs font-extrabold bg-indigo-600 text-white shadow transition';
+        tabSignup.className = 'py-2 rounded-lg text-xs font-extrabold text-slate-400 hover:text-white transition';
+        subtitle.textContent = '계정으로 로그인하고 실시간 서버에 접속하세요!';
+      } else {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+        tabSignup.className = 'py-2 rounded-lg text-xs font-extrabold bg-emerald-600 text-white shadow transition';
+        tabLogin.className = 'py-2 rounded-lg text-xs font-extrabold text-slate-400 hover:text-white transition';
+        subtitle.textContent = '새 계정을 만들어 나만의 닉네임을 등록하세요!';
+      }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const nickInput = document.getElementById('signup-nickname');
+      const pwInput = document.getElementById('signup-password');
+      const pwConfirmInput = document.getElementById('signup-password-confirm');
+      const errEl = document.getElementById('signup-error');
+      const submitBtn = document.getElementById('btn-signup-submit');
+
+      const nickname = nickInput.value.trim();
+      const password = pwInput.value.trim();
+      const passwordConfirm = pwConfirmInput.value.trim();
+
+      if (nickname.length < 2) {
+        errEl.textContent = '❌ 닉네임은 최소 2글자 이상 입력해주세요.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (nickname === '매니저') {
+        errEl.textContent = '❌ 해당 닉네임은 운영자 전용이므로 가입할 수 없습니다.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (password.length < 4) {
+        errEl.textContent = '❌ 비밀번호는 4자 이상 입력해주세요.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (password !== passwordConfirm) {
+        errEl.textContent = '❌ 비밀번호와 비밀번호 확인이 일치하지 않습니다.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (registeredAccounts.has(nickname)) {
+        errEl.textContent = '❌ 이미 사용 중인 닉네임입니다. 다른 닉네임을 입력해주세요.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      errEl.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '⏳ 계정 등록 중...';
+
+      try {
+        if (window.registerCloudAccount) {
+          const ok = await window.registerCloudAccount(nickname, password);
+          if (!ok) {
+            errEl.textContent = '❌ 이미 사용 중인 닉네임입니다.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+        }
+        registeredAccounts.set(nickname, password);
+
+        nickInput.value = '';
+        pwInput.value = '';
+        pwConfirmInput.value = '';
+        switchAuthTab('login');
+        document.getElementById('login-nickname').value = nickname;
+        document.getElementById('login-password').value = password;
+        showToast(`✅ '${nickname}' 회원가입 완료! 바로 접속을 눌러주세요.`, 'emerald');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✨ 회원가입 완료하기';
+      }
+    }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      const nickInput = document.getElementById('login-nickname');
+      const pwInput = document.getElementById('login-password');
+      const errEl = document.getElementById('login-error');
+
+      const nickname = nickInput.value.trim();
+      const password = pwInput.value.trim();
+
+      if (!nickname) return;
+
+      // 운영자 계정 검증 (매니저 / qwer1234)
+      if (nickname === '매니저') {
+        if (password === 'qwer1234') {
+          state.isAdmin = true;
+        } else {
+          errEl.textContent = '❌ 운영자 계정의 비밀번호가 올바르지 않습니다.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+      } else if (registeredAccounts.has(nickname)) {
+        const savedPw = registeredAccounts.get(nickname);
+        if (password !== savedPw) {
+          errEl.textContent = '❌ 가입된 계정의 비밀번호가 일치하지 않습니다.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        state.isAdmin = false;
+      } else {
+        if (password.length > 0) {
+          errEl.textContent = '❌ 등록되지 않은 계정입니다. 먼저 회원가입을 하거나 비밀번호를 비우고 접속하세요.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+        state.isAdmin = false;
+      }
+
+      errEl.classList.add('hidden');
+      state.nickname = nickname;
+      state.loggedIn = true;
+
+      document.getElementById('login-screen').classList.add('hidden');
+
+      const badge = document.getElementById('user-badge');
+      badge.classList.remove('hidden');
+      if (state.isAdmin) {
+        badge.innerHTML = `👑 운영자 (${nickname})`;
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500/20 border border-rose-500 text-rose-300';
+        document.getElementById('dev-panel').classList.remove('hidden');
+        populateDevSummonSelect();
+      } else if (registeredAccounts.has(nickname)) {
+        badge.innerHTML = `✅ ${nickname}`;
+        badge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-950/80 border border-indigo-600 text-indigo-300';
+      } else {
+        badge.innerHTML = `👤 ${nickname} (게스트)`;
+      }
+
+      initAudio();
+      spawnUnitOnBelt();
+      showToast(`${nickname}님, 서버에 접속했습니다!`, 'emerald');
+    }
+
+    function populateDevSummonSelect() {
+      const select = document.getElementById('dev-summon-select');
+      if (!select) return;
+      select.innerHTML = '';
+      CHARACTERS.forEach(char => {
+        const tierInfo = TIERS[char.tier];
+        const opt = document.createElement('option');
+        opt.value = char.id;
+        opt.textContent = `[${tierInfo.name}] ${char.name} (${formatNumber(char.cost)} G)`;
+        select.appendChild(opt);
+      });
+    }
+
+    // ==========================================
+    // 4. Web Audio 효과음 시스템
+    // ==========================================
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+
+        if (type === 'buy') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        } else if (type === 'rare') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(660, now + 0.1);
+          osc.frequency.setValueAtTime(880, now + 0.2);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+          osc.start(now); osc.stop(now + 0.35);
+        } else if (type === 'sell') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(160, now + 0.12);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now); osc.stop(now + 0.12);
+        }
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 5. 확률 기반 캐릭터 추첨 & 컨베이어 스폰
+    // ==========================================
+    function rollCharacter() {
+      const weights = {
+        common: TIERS.common.weight,
+        rare: TIERS.rare.weight,
+        epic: TIERS.epic.weight,
+        legend: TIERS.legend.weight,
+        ultimate: TIERS.ultimate.weight,
+        transcend: TIERS.transcend.weight
+      };
+
+      const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+      let r = Math.random() * totalWeight;
+      let selectedTier = 'common';
+
+      for (const [tierKey, w] of Object.entries(weights)) {
+        if (r < w) {
+          selectedTier = tierKey;
+          break;
+        }
+        r -= w;
+      }
+
+      const pool = CHARACTERS.filter(c => c.tier === selectedTier);
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function spawnUnitOnBelt(forcedChar = null, isGlobalSummon = false) {
+      const beltEl = document.getElementById('conveyor-belt');
+      if (!beltEl) return;
+
+      const char = forcedChar || rollCharacter();
+      const tierInfo = TIERS[char.tier];
+      const uid = 'unit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+
+      const card = document.createElement('div');
+      card.className = `belt-unit absolute top-3 w-32 h-36 rounded-xl border-2 ${tierInfo.border} ${tierInfo.bg} ${tierInfo.glow} p-2 flex flex-col items-center justify-between cursor-pointer hover:scale-105 transition-transform shadow-lg z-20`;
+      card.innerHTML = `
+        <div class="w-full flex items-center justify-between">
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${tierInfo.badge}">${tierInfo.name}</span>
+          <span class="text-[10px] font-bold text-amber-300">+${formatNumber(char.income)}/s</span>
+        </div>
+        ${isGlobalSummon ? `<span class="px-1.5 py-0.2 rounded bg-rose-600 text-white text-[9px] font-extrabold animate-pulse">⚡ 운영자 소환</span>` : ''}
+        <div class="text-3xl my-0.5 drop-shadow">${char.emoji}</div>
+        <div class="text-[11px] font-extrabold text-white text-center leading-tight line-clamp-1">${char.name}</div>
+        <div class="w-full py-1 rounded-lg bg-emerald-600/90 text-white text-[11px] font-extrabold text-center shadow">
+          ${formatNumber(char.cost)} G
+        </div>
+      `;
+
+      card.addEventListener('click', () => buyBeltUnit(uid));
+      beltEl.appendChild(card);
+
+      const startX = beltEl.clientWidth || 700;
+      card.style.transform = `translateX(${startX}px)`;
+
+      state.beltUnits.push({
+        uid,
+        char,
+        x: startX,
+        speed: isGlobalSummon ? 58 : 75,
+        el: card,
+        isGlobalSummon
+      });
+
+      if (char.tier === 'legend' || char.tier === 'ultimate' || char.tier === 'transcend' || isGlobalSummon) {
+        playSound('rare');
+        if (!isGlobalSummon) {
+          showToast(`✨ [${tierInfo.name}] ${char.name} 등장!!`, 'amber');
+        }
+      }
+    }
+
+    function buyBeltUnit(uid) {
+      const idx = state.beltUnits.findIndex(u => u.uid === uid);
+      if (idx === -1) return;
+
+      const unit = state.beltUnits[idx];
+      if (state.slots.length >= state.maxSlots) {
+        showToast('기지 슬롯이 가득 찼습니다! 슬롯을 확장하거나 기존 유닛을 판매하세요.', 'rose');
+        return;
+      }
+      if (state.money < unit.char.cost) {
+        showToast(`골드가 부족합니다! (필요: ${formatNumber(unit.char.cost)} G)`, 'rose');
+        return;
+      }
+
+      state.money -= unit.char.cost;
+      state.slots.push({
+        uid: 'slot_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        charId: unit.char.id
+      });
+      state.unlockedIds.add(unit.char.id);
+
+      unit.el.remove();
+      state.beltUnits.splice(idx, 1);
+
+      playSound('buy');
+      showToast(`🎉 ${unit.char.name} 영입 완료!`, 'emerald');
+      updateUI();
+      renderBase();
+    }
+
+    // ==========================================
+    // 6. 기지 관리 (슬롯 확장, 판매, 수익 계산)
+    // ==========================================
+    function getSlotUnitIncome(slot) {
+      const char = CHARACTERS.find(c => c.id === slot.charId);
+      return char ? char.income : 0;
+    }
+
+    function getTotalIncome() {
+      return state.slots.reduce((sum, slot) => sum + getSlotUnitIncome(slot), 0);
+    }
+
+    function getSlotExpandCost() {
+      return Math.floor(500 * Math.pow(2.4, state.maxSlots - 4));
+    }
+
+    function expandSlot() {
+      if (state.maxSlots >= MAX_SLOTS_LIMIT) return;
+      const cost = getSlotExpandCost();
+      if (state.money < cost) {
+        showToast('골드가 부족합니다!', 'rose');
+        return;
+      }
+      state.money -= cost;
+      state.maxSlots++;
+      playSound('buy');
+      showToast(`🏰 기지 슬롯 확장 완료! (${state.maxSlots}칸)`, 'indigo');
+      updateUI();
+      renderBase();
+    }
+
+    function sellSlotUnit(slotUid) {
+      const idx = state.slots.findIndex(s => s.uid === slotUid);
+      if (idx === -1) return;
+      const slot = state.slots[idx];
+      const char = CHARACTERS.find(c => c.id === slot.charId);
+      const refund = Math.floor(char.cost * 0.5);
+
+      state.money += refund;
+      state.slots.splice(idx, 1);
+      playSound('sell');
+      showToast(`💸 ${char.name} 판매 (+${formatNumber(refund)} G)`, 'slate');
+      updateUI();
+      renderBase();
+    }
+
+    function renderBase() {
+      const grid = document.getElementById('base-grid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < state.maxSlots; i++) {
+        const slot = state.slots[i];
+        if (slot) {
+          const char = CHARACTERS.find(c => c.id === slot.charId);
+          const tierInfo = TIERS[char.tier];
+          const inc = getSlotUnitIncome(slot);
+          const sellPrice = Math.floor(char.cost * 0.5);
+
+          const card = document.createElement('div');
+          card.className = `rounded-2xl border-2 ${tierInfo.border} ${tierInfo.bg} ${tierInfo.glow} p-3 flex flex-col justify-between shadow-md transition`;
+          card.innerHTML = `
+            <div class="flex items-center justify-between mb-1">
+              <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${tierInfo.badge}">${tierInfo.name}</span>
+              <span class="text-[11px] font-extrabold text-slate-300">${char.person}</span>
+            </div>
+            <div class="my-2 text-center">
+              <div class="text-4xl mb-1 drop-shadow">${char.emoji}</div>
+              <div class="text-sm font-extrabold text-white leading-tight">${char.name}</div>
+              <div class="text-xs font-bold text-amber-300 mt-1">+${formatNumber(inc)} G/초</div>
+            </div>
+            <div class="mt-2">
+              <button onclick="sellSlotUnit('${slot.uid}')" class="w-full py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-rose-900/80 border border-slate-700 text-slate-300 hover:text-rose-200 font-bold text-[11px] transition">
+                판매 (+${formatNumber(sellPrice)} G)
+              </button>
+            </div>
+          `;
+          grid.appendChild(card);
+        } else {
+          const empty = document.createElement('div');
+          empty.className = 'rounded-2xl border-2 border-dashed border-slate-700/80 bg-slate-950/50 p-4 flex flex-col items-center justify-center text-center min-h-[175px]';
+          empty.innerHTML = `
+            <div class="text-2xl text-slate-600 mb-1">➕</div>
+            <div class="text-xs font-bold text-slate-500">빈 슬롯 #${i + 1}</div>
+            <div class="text-[10px] text-slate-600 mt-0.5">컨베이어에서 영입하세요</div>
+          `;
+          grid.appendChild(empty);
+        }
+      }
+    }
+
+    // ==========================================
+    // 7. 도감 & 모달 & UI 업데이트
+    // ==========================================
+    function openDexModal() {
+      const modal = document.getElementById('dex-modal');
+      const grid = document.getElementById('dex-grid');
+      grid.innerHTML = '';
+
+      CHARACTERS.forEach(char => {
+        const unlocked = state.unlockedIds.has(char.id);
+        const tierInfo = TIERS[char.tier];
+        const card = document.createElement('div');
+        card.className = unlocked
+          ? `rounded-xl border ${tierInfo.border} ${tierInfo.bg} p-3 flex flex-col items-center text-center`
+          : `rounded-xl border border-slate-800 bg-slate-950/90 p-3 flex flex-col items-center text-center opacity-50`;
+
+        card.innerHTML = `
+          <span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${tierInfo.badge} mb-1.5">${tierInfo.name}</span>
+          <div class="text-3xl my-1">${unlocked ? char.emoji : '❓'}</div>
+          <div class="text-xs font-extrabold text-white">${unlocked ? char.name : '???'}</div>
+          <div class="text-[10px] text-slate-400 mt-1 line-clamp-2">${unlocked ? char.desc : '아직 발견하지 못한 브레인롯입니다.'}</div>
+          ${unlocked ? `<div class="text-[10px] font-bold text-amber-300 mt-1.5">기본 ${formatNumber(char.income)} G/초</div>` : ''}
+        `;
+        grid.appendChild(card);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeDexModal() {
+      const modal = document.getElementById('dex-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function openRatesModal() {
+      const modal = document.getElementById('rates-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeRatesModal() {
+      const modal = document.getElementById('rates-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function updateUI() {
+      document.getElementById('money-display').textContent = `${formatNumber(Math.floor(state.money))} G`;
+      document.getElementById('income-display').textContent = `${formatNumber(getTotalIncome())} G/초`;
+      document.getElementById('dex-count').textContent = state.unlockedIds.size;
+      document.getElementById('slot-used').textContent = state.slots.length;
+      document.getElementById('slot-max').textContent = state.maxSlots;
+
+      const btnSlot = document.getElementById('btn-expand-slot');
+      if (state.maxSlots >= MAX_SLOTS_LIMIT) {
+        btnSlot.textContent = '슬롯 최대 확장 완료';
+        btnSlot.disabled = true;
+      } else {
+        document.getElementById('slot-cost').textContent = formatNumber(getSlotExpandCost());
+      }
+    }
+
+    function formatNumber(num) {
+      if (num >= 1e9) return (num / 1e9).toFixed(2) + 'B';
+      if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+      if (num >= 1e4) return (num / 1e3).toFixed(1) + 'K';
+      return num.toLocaleString();
+    }
+
+    function showToast(msg, color = 'sky') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      const colors = {
+        emerald: 'bg-emerald-950/95 border-emerald-500 text-emerald-200',
+        rose: 'bg-rose-950/95 border-rose-500 text-rose-200',
+        amber: 'bg-amber-950/95 border-amber-400 text-amber-200',
+        indigo: 'bg-indigo-950/95 border-indigo-400 text-indigo-200',
+        slate: 'bg-slate-900/95 border-slate-600 text-slate-200',
+        sky: 'bg-sky-950/95 border-sky-400 text-sky-200'
+      };
+      el.className = `px-4 py-2.5 rounded-xl border ${colors[color] || colors.sky} text-xs font-bold shadow-xl transition-all duration-300`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 300);
+      }, 2400);
+    }
+
+    // ==========================================
+    // 8. 메인 게임 루프 (애니메이션 & 자동 수익)
+    // ==========================================
+    let lastTime = performance.now();
+    let spawnTimer = 0;
+    let incomeTimer = 0;
+
+    function gameLoop(now) {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+
+      if (state.loggedIn) {
+        // 1) 컨베이어 유닛 이동
+        for (let i = state.beltUnits.length - 1; i >= 0; i--) {
+          const u = state.beltUnits[i];
+          u.x -= u.speed * dt;
+          if (u.x < -140) {
+            u.el.remove();
+            state.beltUnits.splice(i, 1);
+          } else {
+            u.el.style.transform = `translateX(${u.x}px)`;
+          }
+        }
+
+        // 2) 자동 스폰 (2.1초 간격)
+        spawnTimer += dt;
+        if (spawnTimer >= 2.1) {
+          spawnTimer = 0;
+          if (state.beltUnits.length < 7) {
+            spawnUnitOnBelt();
+          }
+        }
+
+        // 3) 초당 자동 수익 정산 (0.2초마다 부드럽게 반영)
+        incomeTimer += dt;
+        if (incomeTimer >= 0.2) {
+          const inc = getTotalIncome();
+          if (inc > 0) {
+            state.money += inc * incomeTimer;
+            updateUI();
+          }
+          incomeTimer = 0;
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      renderBase();
+      updateUI();
+      requestAnimationFrame(gameLoop);
+    });
+
+    // ==========================================
+    // 9. 글로벌 실시간 이벤트 처리 (전 서버 공지 & 소환)
+    // ==========================================
+    const processedEventIds = new Set();
+
+    window.handleIncomingGlobalEvent = function(eventId, data) {
+      if (!data) return;
+      if (eventId && processedEventIds.has(eventId)) return;
+      if (eventId) processedEventIds.add(eventId);
+
+      if (data.type === 'announce' && data.text) {
+        showGlobalBanner(data.text);
+      } else if (data.type === 'summon' && data.charId) {
+        const charObj = CHARACTERS.find(c => String(c.id) === String(data.charId));
+        if (charObj) {
+          // 전 서버 컨베이어 벨트에 해당 캐릭터 즉시 스폰 (운영자 소환 표시)
+          spawnUnitOnBelt(charObj, true);
+          const tierInfo = TIERS[charObj.tier];
+          showToast(`⚡ [운영자 소환] 전 서버에 [${tierInfo.name}] ${charObj.name} 등장!`, 'rose');
+        }
+      }
+    };
+
+    async function sendGlobalAnnounce() {
+      if (!state.isAdmin) return;
+      const input = document.getElementById('dev-announce-input');
+      const text = input ? input.value.trim() : '';
+      if (!text) return;
+
+      input.value = '';
+      if (window.broadcastGlobalEvent) {
+        await window.broadcastGlobalEvent({ type: 'announce', text });
+      } else {
+        window.handleIncomingGlobalEvent('local_' + Date.now(), { type: 'announce', text });
+      }
+    }
+
+    async function sendGlobalSummon() {
+      if (!state.isAdmin) return;
+      const select = document.getElementById('dev-summon-select');
+      const charId = select ? select.value : '';
+      if (!charId) return;
+
+      if (window.broadcastGlobalEvent) {
+        await window.broadcastGlobalEvent({ type: 'summon', charId });
+      } else {
+        window.handleIncomingGlobalEvent('local_' + Date.now(), { type: 'summon', charId });
+      }
+    }
+
+    function showGlobalBanner(text) {
+      const banner = document.getElementById('global-announce-banner');
+      const bannerText = document.getElementById('global-announce-text');
+      if (!banner || !bannerText) return;
+
+      bannerText.textContent = text;
+      banner.classList.remove('hidden');
+      playSound('rare');
+    }
+  </script>
+
+  <!-- Firebase 실시간 서버 동기화 모듈 (전 세계 모든 접속자 공유 이벤트 & 계정) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, getDoc, setDoc, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    (async function initCloudSync() {
+      try {
+        if (typeof __firebase_config === 'undefined') return;
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'brainrot-2d-global';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Rule 3: Auth Before Queries
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Rule 1: Strict Public Path (공용 이벤트 & 공용 계정 목록)
+        const eventsCol = collection(db, 'artifacts', appId, 'public', 'data', 'global_events');
+        const accountsCol = collection(db, 'artifacts', appId, 'public', 'data', 'user_accounts');
+        const joinTimestamp = Date.now();
+        let firstLoadDone = false;
+
+        // 가입된 계정 목록 실시간 동기화
+        onSnapshot(accountsCol, (snapshot) => {
+          const list = [];
+          snapshot.forEach(docSnap => list.push(docSnap.data()));
+          if (window.syncAccountsCache) {
+            window.syncAccountsCache(list);
+          }
+        }, (err) => {
+          console.error("계정 목록 동기화 오류:", err);
+        });
+
+        // 회원가입 처리 함수 연결
+        window.registerCloudAccount = async function(nickname, password) {
+          if (!auth.currentUser) return false;
+          const safeDocId = encodeURIComponent(nickname);
+          const accRef = doc(db, 'artifacts', appId, 'public', 'data', 'user_accounts', safeDocId);
+          const existing = await getDoc(accRef);
+          if (existing.exists()) {
+            return false;
+          }
+          await setDoc(accRef, {
+            nickname,
+            password,
+            createdAt: Date.now()
+          });
+          return true;
+        };
+
+        // Rule 2: No Complex Queries (fetch collection, filter in JS memory)
+        onSnapshot(eventsCol, (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const data = change.doc.data();
+              // 접속 이후 발생한 실시간 이벤트(또는 최근 5초 이내 이벤트)만 실행
+              if (firstLoadDone || (data.createdAt && data.createdAt >= joinTimestamp - 5000)) {
+                if (window.handleIncomingGlobalEvent) {
+                  window.handleIncomingGlobalEvent(change.doc.id, data);
+                }
+              }
+            }
+          });
+          firstLoadDone = true;
+        }, (err) => {
+          console.error("실시간 이벤트 수신 오류:", err);
+        });
+
+        // 운영자 패널에서 전 서버로 이벤트 발송 함수 연결
+        window.broadcastGlobalEvent = async function(payload) {
+          if (!auth.currentUser) return;
+          await addDoc(eventsCol, {
+            ...payload,
+            createdAt: Date.now()
+          });
+        };
+      } catch (err) {
+        console.error("클라우드 초기화 오류:", err);
+      }
+    })();
+  </script>
+</body>
+</html>
